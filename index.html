@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obsequios Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .view { display: none; }
+        .active-view { display: block; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4">
+
+    <!-- Pantalla Principal -->
+    <div id="view-home" class="view active-view max-w-md mx-auto">
+        <header class="bg-white p-4 rounded-xl shadow-sm mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-xl font-bold">Obsequios Clientes</h1>
+                <div id="promo-badge" class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Promos: 4</div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button onclick="descargarJSON()" class="bg-gray-800 text-white p-2 rounded text-xs">💾 Descargar Backup</button>
+                <input type="file" id="file-input" class="hidden" onchange="cargarJSON(event)">
+                <button onclick="document.getElementById('file-input').click()" class="bg-gray-800 text-white p-2 rounded text-xs">📂 Cargar Backup</button>
+                <button id="whatsapp-json-btn" class="col-span-2 bg-blue-600 text-white p-2 rounded text-xs hidden" onclick="enviarJSONWhatsApp()">📤 Enviar Backup por WhatsApp</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Interruptores personalizados -->
+            <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('camisetas')">
+                <div class="text-4xl mb-2">👕</div>
+                <p class="font-bold">Camisetas</p>
+                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                    <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('gorras')">
+                <div class="text-4xl mb-2">🧢</div>
+                <p class="font-bold">Gorras</p>
+                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                    <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('vinos')">
+                <div class="text-4xl mb-2">🍷</div>
+                <p class="font-bold">Vinos</p>
+                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                    <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('agendas')">
+                <div class="text-4xl mb-2">📅</div>
+                <p class="font-bold">Agendas</p>
+                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                    <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de Gestión -->
+    <div id="view-detail" class="view max-w-md mx-auto">
+        <button onclick="goHome()" class="mb-4 text-blue-600 font-bold">← Volver</button>
+        <h2 id="cat-title" class="text-2xl font-bold mb-4 capitalize"></h2>
+        
+        <div class="bg-white p-4 rounded-xl shadow mb-4">
+            <input id="client-name" placeholder="Nombre Cliente" class="w-full border p-2 mb-2 rounded">
+            <select id="client-zone" class="w-full border p-2 mb-2 rounded">
+                <option value="">Selecciona zona</option>
+                <option value="Guadix">Guadix</option>
+                <option value="Ejido">Ejido</option>
+                <option value="Tabernas">Tabernas</option>
+                <option value="Carboneras">Carboneras</option>
+                <option value="Níjar">Níjar</option>
+            </select>
+            
+            <div id="items-container" class="space-y-3 mt-4">
+                <div class="flex gap-2 item-row items-center">
+                    <select id="simple-qty" class="w-full border p-2 rounded">${getQtyOptions()}</select>
+                </div>
+            </div>
+            <button id="add-btn" class="mt-4 text-sm text-blue-600 font-bold underline hidden" onclick="addMoreItem()">+ Añadir otra prenda</button>
+            <button class="w-full mt-4 bg-green-600 text-white p-2 rounded font-bold" onclick="saveData()">Guardar Cliente</button>
+        </div>
+
+        <div id="client-list" class="space-y-2 mb-6"></div>
+
+        <div class="bg-gray-200 p-4 rounded-xl">
+            <h3 class="font-bold mb-2">Resumen:</h3>
+            <div id="zone-totals" class="text-sm mb-4">No hay registros</div>
+            <button id="whatsapp-btn" class="w-full bg-green-500 text-white p-2 rounded font-bold hidden" onclick="enviarWhatsApp()">Enviar resumen por WhatsApp</button>
+        </div>
+    </div>
+
+    <script>
+        let currentCat = '';
+        let registros = [];
+        
+        function getQtyOptions() {
+            let options = '';
+            for(let i=1; i<=10; i++) options += `<option value="${i}">${i}</option>`;
+            return options;
+        }
+
+        // Lógica actualizada para el interruptor
+        function toggleSwitch(el) {
+            const isActive = el.getAttribute('data-active') === 'true';
+            el.setAttribute('data-active', !isActive);
+            el.classList.toggle('bg-green-500', !isActive);
+            el.classList.toggle('bg-red-500', isActive);
+            el.querySelector('div').classList.toggle('ml-auto', !isActive);
+            updatePromos();
+        }
+
+        function updatePromos() {
+            const count = document.querySelectorAll('[data-active="true"]').length;
+            document.getElementById('promo-badge').innerText = `Promos: ${count}`;
+        }
+
+        function openCategory(cat) {
+            currentCat = cat;
+            document.getElementById('view-home').classList.remove('active-view');
+            document.getElementById('view-detail').classList.add('active-view');
+            document.getElementById('cat-title').innerText = cat;
+            document.getElementById('add-btn').style.display = (currentCat === 'camisetas') ? 'block' : 'none';
+            resetForm();
+            renderAll();
+        }
+
+        function addMoreItem() {
+            const container = document.getElementById('items-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'flex gap-2 item-row items-center';
+            newRow.innerHTML = `
+                <select class="w-20 border p-2 rounded cant-input">${getQtyOptions()}</select>
+                <select class="border p-2 rounded size-select">
+                    <option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option>
+                </select>
+                <button onclick="this.parentElement.remove()" class="text-red-500 font-bold px-2">❌</button>
+            `;
+            container.appendChild(newRow);
+        }
+
+        function resetForm() {
+            document.getElementById('client-name').value = '';
+            document.getElementById('client-zone').value = '';
+            document.getElementById('items-container').innerHTML = (currentCat === 'camisetas') ? 
+            `<div class="flex gap-2 item-row items-center">
+                <select class="w-20 border p-2 rounded cant-input">${getQtyOptions()}</select>
+                <select class="border p-2 rounded size-select">
+                    <option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL</option>
+                </select>
+            </div>` : 
+            `<select id="simple-qty" class="w-full border p-2 rounded">${getQtyOptions()}</select>`;
+        }
+
+        function goHome() {
+            document.getElementById('view-home').classList.add('active-view');
+            document.getElementById('view-detail').classList.remove('active-view');
+        }
+
+        function saveData() {
+            const name = document.getElementById('client-name').value;
+            const zone = document.getElementById('client-zone').value;
+            if(!name || !zone) { alert("Nombre y zona requeridos"); return; }
+            
+            const items = [];
+            if(currentCat === 'camisetas') {
+                document.querySelectorAll('.item-row').forEach(row => {
+                    items.push({
+                        cant: parseInt(row.querySelector('.cant-input').value) || 0,
+                        size: row.querySelector('.size-select').value
+                    });
+                });
+            } else {
+                items.push({ cant: parseInt(document.getElementById('simple-qty').value) || 0, size: 'Unidad' });
+            }
+            
+            registros.push({ id: Date.now(), name, zone, items, category: currentCat });
+            resetForm();
+            renderAll();
+        }
+
+        function deleteClient(id) {
+            registros = registros.filter(r => r.id !== id);
+            renderAll();
+        }
+
+        function renderAll() {
+            const filtered = registros.filter(r => r.category === currentCat);
+            const list = document.getElementById('client-list');
+            list.innerHTML = filtered.map(r => `
+                <div class="bg-white p-3 rounded shadow flex justify-between items-center">
+                    <div><strong>${r.name}</strong> (${r.zone})<br><small>${r.items.map(i => `${i.cant}x ${i.size}`).join(', ')}</small></div>
+                    <button onclick="deleteClient(${r.id})" class="text-red-500 font-bold px-2">Borrar</button>
+                </div>
+            `).join('');
+            
+            const resumen = {};
+            filtered.forEach(r => {
+                if(!resumen[r.zone]) resumen[r.zone] = {};
+                r.items.forEach(i => {
+                    const clave = (currentCat === 'camisetas') ? i.size : 'Cantidad';
+                    resumen[r.zone][clave] = (resumen[r.zone][clave] || 0) + i.cant;
+                });
+            });
+
+            let html = '';
+            for(let zone in resumen) {
+                html += `<div class="mb-2 border-b pb-1"><strong>${zone}:</strong> ${Object.entries(resumen[zone]).map(e => `${e[0]}: ${e[1]}`).join(' | ')}</div>`;
+            }
+            
+            if(currentCat === 'camisetas' && filtered.length > 0) {
+                const totalTallas = {};
+                filtered.forEach(r => r.items.forEach(i => totalTallas[i.size] = (totalTallas[i.size] || 0) + i.cant));
+                html += `<div class="mt-4 font-bold text-blue-700 bg-blue-50 p-2 rounded">TOTAL CAMISETAS:<br>${Object.entries(totalTallas).map(e => `Talla ${e[0]}: ${e[1]} ud.`).join(' | ')}</div>`;
+            }
+
+            document.getElementById('zone-totals').innerHTML = html || 'No hay registros';
+            document.getElementById('whatsapp-btn').classList.toggle('hidden', filtered.length === 0);
+            document.getElementById('whatsapp-json-btn').classList.toggle('hidden', registros.length === 0);
+        }
+
+        function descargarJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registros));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "backup_obsequios.json");
+            dlAnchorElem.click();
+        }
+
+        function cargarJSON(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                registros = JSON.parse(e.target.result);
+                renderAll();
+            };
+            reader.readAsText(file);
+        }
+
+        function enviarJSONWhatsApp() {
+            const msg = "Backup Obsequios: " + JSON.stringify(registros);
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function enviarWhatsApp() {
+            const filtered = registros.filter(r => r.category === currentCat);
+            
+            let lines = [];
+            lines.push(`PEDIDO DE OBSEQUIOS: ${currentCat.toUpperCase()}`);
+            lines.push(`-----------------------------------`);
+            
+            const resumenPorZona = {};
+            const totalGlobal = {};
+
+            filtered.forEach(r => {
+                if (!resumenPorZona[r.zone]) resumenPorZona[r.zone] = {};
+                r.items.forEach(i => {
+                    const clave = (currentCat === 'camisetas') ? `Talla ${i.size}` : 'Cantidad';
+                    resumenPorZona[r.zone][clave] = (resumenPorZona[r.zone][clave] || 0) + i.cant;
+                    
+                    const globalKey = (currentCat === 'camisetas') ? `Talla ${i.size}` : 'Total';
+                    totalGlobal[globalKey] = (totalGlobal[globalKey] || 0) + i.cant;
+                });
+            });
+
+            for (const zone in resumenPorZona) {
+                lines.push(`ZONA: ${zone}`);
+                for (const item in resumenPorZona[zone]) {
+                    lines.push(`> ${item}: ${resumenPorZona[zone][item]} uds.`);
+                }
+                lines.push(``);
+            }
+
+            lines.push(`TOTAL GLOBAL`);
+            lines.push(`-----------------------------------`);
+            for (const item in totalGlobal) {
+                lines.push(`${item}: ${totalGlobal[item]} uds.`);
+            }
+            
+            lines.push(`-----------------------------------`);
+            lines.push(`Enviado por JuanMi`);
+
+            window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, '_blank');
+        }
+    </script>
+</body>
+</html>
+
+
+
