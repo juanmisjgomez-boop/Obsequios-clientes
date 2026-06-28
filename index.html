@@ -28,7 +28,6 @@
         </header>
 
         <div class="grid grid-cols-2 gap-4">
-            <!-- Interruptores personalizados -->
             <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('camisetas')">
                 <div class="text-4xl mb-2">👕</div>
                 <p class="font-bold">Camisetas</p>
@@ -90,7 +89,9 @@
         <div class="bg-gray-200 p-4 rounded-xl">
             <h3 class="font-bold mb-2">Resumen:</h3>
             <div id="zone-totals" class="text-sm mb-4">No hay registros</div>
-            <button id="whatsapp-btn" class="w-full bg-green-500 text-white p-2 rounded font-bold hidden" onclick="enviarWhatsApp()">Enviar resumen por WhatsApp</button>
+            <button id="whatsapp-btn" class="w-full bg-green-500 text-white p-2 rounded font-bold hidden mb-3" onclick="enviarWhatsApp()">Enviar resumen por WhatsApp</button>
+            <!-- BOTÓN DE REINICIO DE TEMPORADA -->
+            <button id="reset-season-btn" class="w-full bg-red-600 text-white p-2 rounded font-bold hidden" onclick="resetSeason()">Reiniciar Temporada</button>
         </div>
     </div>
 
@@ -104,7 +105,6 @@
             return options;
         }
 
-        // Lógica actualizada para el interruptor
         function toggleSwitch(el) {
             const isActive = el.getAttribute('data-active') === 'true';
             el.setAttribute('data-active', !isActive);
@@ -159,6 +159,14 @@
         function goHome() {
             document.getElementById('view-home').classList.add('active-view');
             document.getElementById('view-detail').classList.remove('active-view');
+        }
+
+        // Lógica de borrado total por categoría
+        function resetSeason() {
+            if(confirm(`¿Estás seguro de que quieres borrar todos los registros de ${currentCat}?`)) {
+                registros = registros.filter(r => r.category !== currentCat);
+                renderAll();
+            }
         }
 
         function saveData() {
@@ -219,7 +227,11 @@
             }
 
             document.getElementById('zone-totals').innerHTML = html || 'No hay registros';
-            document.getElementById('whatsapp-btn').classList.toggle('hidden', filtered.length === 0);
+            
+            // Actualizar visibilidad de botones
+            const hasData = filtered.length > 0;
+            document.getElementById('whatsapp-btn').classList.toggle('hidden', !hasData);
+            document.getElementById('reset-season-btn').classList.toggle('hidden', !hasData);
             document.getElementById('whatsapp-json-btn').classList.toggle('hidden', registros.length === 0);
         }
 
