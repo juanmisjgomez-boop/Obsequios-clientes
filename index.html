@@ -17,7 +17,7 @@
         <header class="bg-white p-4 rounded-xl shadow-sm mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-xl font-bold">Obsequios Clientes</h1>
-                <div id="promo-badge" class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Promos: 4</div>
+                <div id="promo-badge" class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Promos: 0</div>
             </div>
             <div class="grid grid-cols-2 gap-2 mb-4">
                 <button onclick="descargarJSON()" class="bg-gray-800 text-white p-2 rounded text-xs">💾 Descargar Backup</button>
@@ -31,28 +31,28 @@
             <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('camisetas')">
                 <div class="text-4xl mb-2">👕</div>
                 <p class="font-bold">Camisetas</p>
-                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                <div id="sw-camisetas" data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
                     <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('gorras')">
                 <div class="text-4xl mb-2">🧢</div>
                 <p class="font-bold">Gorras</p>
-                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                <div id="sw-gorras" data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
                     <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('vinos')">
                 <div class="text-4xl mb-2">🍷</div>
                 <p class="font-bold">Vinos</p>
-                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                <div id="sw-vinos" data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
                     <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-xl shadow text-center cursor-pointer relative" onclick="openCategory('agendas')">
                 <div class="text-4xl mb-2">📅</div>
                 <p class="font-bold">Agendas</p>
-                <div data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
+                <div id="sw-agendas" data-active="true" onclick="toggleSwitch(this); event.stopPropagation()" class="mt-3 w-16 h-8 mx-auto rounded-full bg-green-500 transition-colors flex items-center p-1 cursor-pointer">
                     <div class="bg-white w-6 h-6 rounded-full shadow-md ml-auto"></div>
                 </div>
             </div>
@@ -97,18 +97,37 @@
     <script>
         let currentCat = '';
         let registros = [];
+        let interruptores = { camisetas: true, gorras: true, vinos: true, agendas: true };
         
-        // Al cargar la página, recuperar datos
         window.onload = () => {
-            const saved = localStorage.getItem('registros_obsequios');
-            if (saved) {
-                registros = JSON.parse(saved);
-                renderAll();
+            const savedRegistros = localStorage.getItem('registros_obsequios');
+            if (savedRegistros) registros = JSON.parse(savedRegistros);
+            
+            const savedSwitches = localStorage.getItem('switches_obsequios');
+            if (savedSwitches) {
+                interruptores = JSON.parse(savedSwitches);
+                aplicarEstadoInterruptores();
             }
+            renderAll();
         };
+
+        function aplicarEstadoInterruptores() {
+            for (const cat in interruptores) {
+                const el = document.getElementById('sw-' + cat);
+                if (el) {
+                    const isActive = interruptores[cat];
+                    el.setAttribute('data-active', isActive);
+                    el.classList.toggle('bg-green-500', isActive);
+                    el.classList.toggle('bg-red-500', !isActive);
+                    el.querySelector('div').classList.toggle('ml-auto', isActive);
+                }
+            }
+            updatePromos();
+        }
 
         function guardarEnLocal() {
             localStorage.setItem('registros_obsequios', JSON.stringify(registros));
+            localStorage.setItem('switches_obsequios', JSON.stringify(interruptores));
         }
 
         function getQtyOptions() {
@@ -118,16 +137,14 @@
         }
 
         function toggleSwitch(el) {
-            const isActive = el.getAttribute('data-active') === 'true';
-            el.setAttribute('data-active', !isActive);
-            el.classList.toggle('bg-green-500', !isActive);
-            el.classList.toggle('bg-red-500', isActive);
-            el.querySelector('div').classList.toggle('ml-auto', !isActive);
-            updatePromos();
+            const cat = el.id.replace('sw-', '');
+            interruptores[cat] = !interruptores[cat];
+            aplicarEstadoInterruptores();
+            guardarEnLocal();
         }
 
         function updatePromos() {
-            const count = document.querySelectorAll('[data-active="true"]').length;
+            const count = Object.values(interruptores).filter(v => v).length;
             document.getElementById('promo-badge').innerText = `Promos: ${count}`;
         }
 
