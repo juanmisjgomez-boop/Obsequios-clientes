@@ -90,7 +90,6 @@
             <h3 class="font-bold mb-2">Resumen:</h3>
             <div id="zone-totals" class="text-sm mb-4">No hay registros</div>
             <button id="whatsapp-btn" class="w-full bg-green-500 text-white p-2 rounded font-bold hidden mb-3" onclick="enviarWhatsApp()">Enviar resumen por WhatsApp</button>
-            <!-- BOTÓN DE REINICIO DE TEMPORADA -->
             <button id="reset-season-btn" class="w-full bg-red-600 text-white p-2 rounded font-bold hidden" onclick="resetSeason()">Reiniciar Temporada</button>
         </div>
     </div>
@@ -99,6 +98,19 @@
         let currentCat = '';
         let registros = [];
         
+        // Al cargar la página, recuperar datos
+        window.onload = () => {
+            const saved = localStorage.getItem('registros_obsequios');
+            if (saved) {
+                registros = JSON.parse(saved);
+                renderAll();
+            }
+        };
+
+        function guardarEnLocal() {
+            localStorage.setItem('registros_obsequios', JSON.stringify(registros));
+        }
+
         function getQtyOptions() {
             let options = '';
             for(let i=1; i<=10; i++) options += `<option value="${i}">${i}</option>`;
@@ -161,10 +173,10 @@
             document.getElementById('view-detail').classList.remove('active-view');
         }
 
-        // Lógica de borrado total por categoría
         function resetSeason() {
             if(confirm(`¿Estás seguro de que quieres borrar todos los registros de ${currentCat}?`)) {
                 registros = registros.filter(r => r.category !== currentCat);
+                guardarEnLocal();
                 renderAll();
             }
         }
@@ -187,12 +199,14 @@
             }
             
             registros.push({ id: Date.now(), name, zone, items, category: currentCat });
+            guardarEnLocal();
             resetForm();
             renderAll();
         }
 
         function deleteClient(id) {
             registros = registros.filter(r => r.id !== id);
+            guardarEnLocal();
             renderAll();
         }
 
@@ -228,7 +242,6 @@
 
             document.getElementById('zone-totals').innerHTML = html || 'No hay registros';
             
-            // Actualizar visibilidad de botones
             const hasData = filtered.length > 0;
             document.getElementById('whatsapp-btn').classList.toggle('hidden', !hasData);
             document.getElementById('reset-season-btn').classList.toggle('hidden', !hasData);
@@ -248,6 +261,7 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 registros = JSON.parse(e.target.result);
+                guardarEnLocal();
                 renderAll();
             };
             reader.readAsText(file);
@@ -301,6 +315,5 @@
     </script>
 </body>
 </html>
-
 
 
